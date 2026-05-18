@@ -49,18 +49,37 @@ function bindEvents(block) {
   const slideIndicators = block.querySelector('.carousel-slide-indicators');
   if (!slideIndicators) return;
 
+  let autoScrollInterval;
+
+  const startAutoScroll = () => {
+    autoScrollInterval = setInterval(() => {
+      const nextSlideIndex = (parseInt(block.dataset.activeSlide, 10) + 1);
+      showSlide(block, nextSlideIndex);
+    }, 5000);
+  };
+
+  const stopAutoScroll = () => {
+    clearInterval(autoScrollInterval);
+  };
+
   slideIndicators.querySelectorAll('button').forEach((button) => {
     button.addEventListener('click', (e) => {
+      stopAutoScroll();
       const slideIndicator = e.currentTarget.parentElement;
       showSlide(block, parseInt(slideIndicator.dataset.targetSlide, 10));
+      startAutoScroll();
     });
   });
 
   block.querySelector('.slide-prev').addEventListener('click', () => {
+    stopAutoScroll();
     showSlide(block, parseInt(block.dataset.activeSlide, 10) - 1);
+    startAutoScroll();
   });
   block.querySelector('.slide-next').addEventListener('click', () => {
+    stopAutoScroll();
     showSlide(block, parseInt(block.dataset.activeSlide, 10) + 1);
+    startAutoScroll();
   });
 
   const slideObserver = new IntersectionObserver((entries) => {
@@ -71,6 +90,8 @@ function bindEvents(block) {
   block.querySelectorAll('.carousel-slide').forEach((slide) => {
     slideObserver.observe(slide);
   });
+
+  startAutoScroll();
 }
 
 function createSlide(row, slideIndex, carouselId) {
@@ -131,14 +152,20 @@ export default async function decorate(block) {
   }
 
   rows.forEach((row, idx) => {
-    const slide = createSlide(row, idx, carouselId);
+    if (idx === 0) {
+      row.remove();
+      return;
+    }
+
+    const visibleSlideIndex = idx - 1;
+    const slide = createSlide(row, visibleSlideIndex, carouselId);
     slidesWrapper.append(slide);
 
     if (slideIndicators) {
       const indicator = document.createElement('li');
       indicator.classList.add('carousel-slide-indicator');
-      indicator.dataset.targetSlide = idx;
-      indicator.innerHTML = `<button type="button" aria-label="${placeholders.showSlide || 'Show Slide'} ${idx + 1} ${placeholders.of || 'of'} ${rows.length}"></button>`;
+      indicator.dataset.targetSlide = visibleSlideIndex;
+      indicator.innerHTML = `<button type="button" aria-label="${placeholders.showSlide || 'Show Slide'} ${visibleSlideIndex + 1} ${placeholders.of || 'of'} ${rows.length - 1}"></button>`;
       slideIndicators.append(indicator);
     }
     row.remove();
@@ -149,5 +176,6 @@ export default async function decorate(block) {
 
   if (!isSingleSlide) {
     bindEvents(block);
+    showSlide(block, 1);
   }
 }
